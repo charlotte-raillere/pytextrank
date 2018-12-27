@@ -797,3 +797,19 @@ def pretty_print(obj, indent=False):
         return json.dumps(obj, sort_keys=True, indent=2, separators=(',', ': '))
     else:
         return json.dumps(obj, sort_keys=True)
+
+
+def get_key_phrases_from_text(text):
+    """
+    Return the normalized key phrases from a text
+    """
+    graf_text = filter_quotes(text, is_email=False)
+    grafs, new_base_idx = parse_graf(0, ".".join(graf_text), 0)
+
+    grafs_as_dictionary = [graf._asdict() for graf in grafs]
+    graph = build_graph(grafs_as_dictionary)
+    ranks = nx.pagerank(graph)
+
+    render_ranks(graph, ranks)
+
+    return normalize_key_phrases(grafs_as_dictionary, ranks)
