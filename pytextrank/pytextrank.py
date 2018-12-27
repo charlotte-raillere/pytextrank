@@ -428,12 +428,12 @@ def enumerate_chunks(phrase, spacy_nlp):
             yield text, phrase
 
 
-def collect_keyword(sent, ranks, stopwords):
+def collect_keyword(sent, ranks, stopwords, min_length_word=0):
     """
     iterator for collecting the single-word keyphrases
     """
     for w in sent:
-        if (w.word_id > 0) and (w.root in ranks) and (w.pos[0] in "NV") and (w.root not in stopwords):
+        if (w.word_id > 0) and (w.root in ranks) and (w.pos[0] in "NV") and (w.root.lower() not in stopwords) and (len(w.root) >= min_length_word):
             rl = RankedLexeme(text=w.raw.lower(), rank=ranks[w.root] / 2.0, ids=[w.word_id], pos=w.pos.lower(), count=1)
 
             if DEBUG:
@@ -466,7 +466,7 @@ def find_entity(sent, ranks, ent, i):
         return w_ranks, w_ids
 
 
-def collect_entities(sent, ranks, stopwords, spacy_nlp):
+def collect_entities(sent, ranks, stopwords, spacy_nlp, min_length_word=0):
     """
     iterator for collecting the named-entities
     """
@@ -480,7 +480,7 @@ def collect_entities(sent, ranks, stopwords, spacy_nlp):
         if DEBUG:
             print("NER:", ent.label_, ent.text)
 
-        if (ent.label_ not in ["CARDINAL"]) and (ent.text.lower() not in stopwords):
+        if (ent.label_ not in ["CARDINAL"]) and (ent.text.lower() not in stopwords) and (len(ent.text) >= min_length_word):
             w_ranks, w_ids = find_entity(sent, ranks, ent.text.split(" "), 0)
 
             if w_ranks and w_ids:
@@ -492,7 +492,7 @@ def collect_entities(sent, ranks, stopwords, spacy_nlp):
                 yield rl
 
 
-def collect_phrases(sent, ranks, spacy_nlp):
+def collect_phrases(sent, ranks, spacy_nlp, stopwords, min_length_word):
     """
     iterator for collecting the noun phrases
     """
@@ -510,7 +510,7 @@ def collect_phrases(sent, ranks, spacy_nlp):
         else:
             # just hit a phrase boundary
             for text, p in enumerate_chunks(phrase, spacy_nlp):
-                if p:
+                if p and (text.lower() not in stopwords) and (len(text) >= min_length_word):
                     id_list = [rl.ids for rl in p]
                     rank_list = [rl.rank for rl in p]
                     np_rl = RankedLexeme(text=text, rank=rank_list, ids=id_list, pos="np", count=1)
@@ -535,7 +535,7 @@ def calc_rms(values):
     return max(values)
 
 
-def normalize_key_phrases(path, ranks, stopwords=None, spacy_nlp=None, skip_ner=True):
+def normalize_key_phrases(path, ranks, stopwords=None, spacy_nlp=None, skip_ner=True, min_length_word=0):
     """
     collect keyphrases, named entities, etc., while removing stop words
     """
@@ -568,7 +568,7 @@ def normalize_key_phrases(path, ranks, stopwords=None, spacy_nlp=None, skip_ner=
     for meta in path:
         sent = [w for w in map(WordNode._make, meta["graf"])]
 
-        for rl in collect_keyword(sent, ranks, stopwords):
+        for rl in collect_keyword(sent, ranks, stopwords, min_length_word):
             id = str(rl.ids)
 
             if id not in single_lex:
@@ -578,7 +578,7 @@ def normalize_key_phrases(path, ranks, stopwords=None, spacy_nlp=None, skip_ner=
                 single_lex[id] = rl._replace(count=prev_lex.count + 1)
 
         if not skip_ner:
-            for rl in collect_entities(sent, ranks, stopwords, spacy_nlp):
+            for rl in collect_entities(sent, ranks, stopwords, spacy_nlp, min_length_word):
                 id = str(rl.ids)
 
                 if id not in phrase_lex:
@@ -587,7 +587,7 @@ def normalize_key_phrases(path, ranks, stopwords=None, spacy_nlp=None, skip_ner=
                     prev_lex = phrase_lex[id]
                     phrase_lex[id] = rl._replace(count=prev_lex.count + 1)
 
-        for rl in collect_phrases(sent, ranks, spacy_nlp):
+        for rl in collect_phrases(sent, ranks, spacy_nlp, stopwords, min_length_word):
             id = str(rl.ids)
 
             if id not in phrase_lex:
@@ -799,7 +799,7 @@ def pretty_print(obj, indent=False):
         return json.dumps(obj, sort_keys=True)
 
 
-def get_key_phrases_from_text(text):
+def get_key_phrases_from_text(text, stop_words_file="stop.txt", min_length_word=0):
     """
     Return the normalized key phrases from a text
     """
@@ -812,4 +812,4 @@ def get_key_phrases_from_text(text):
 
     render_ranks(graph, ranks)
 
-    return normalize_key_phrases(grafs_as_dictionary, ranks)
+    return normalize_key_phrases(grafs_as_dictionary, ranks, stopwords=stop_words_file, min_length_word=min_length_word)
