@@ -15,13 +15,12 @@ import spacy
 import statistics
 import string
 
-DEBUG = False # True
+DEBUG = False  # True
 
 ParsedGraf = namedtuple('ParsedGraf', 'id, sha1, graf')
 WordNode = namedtuple('WordNode', 'word_id, raw, root, pos, keep, idx')
 RankedLexeme = namedtuple('RankedLexeme', 'text, rank, ids, pos, count')
 SummarySent = namedtuple('SummarySent', 'dist, idx, text')
-
 
 ######################################################################
 ## filter the novel text versus quoted text in an email message
@@ -31,7 +30,7 @@ PAT_REPLIED = re.compile("\nOn.*\d+.*\n?wrote\:\n+\>")
 PAT_UNSUBSC = re.compile("\n\-+\nTo unsubscribe,.*\nFor additional commands,.*")
 
 
-def split_grafs (lines):
+def split_grafs(lines):
     """
     segment the raw text into paragraphs
     """
@@ -51,7 +50,7 @@ def split_grafs (lines):
         yield "\n".join(graf)
 
 
-def filter_quotes (text, is_email=True):
+def filter_quotes(text, is_email=True):
     """
     filter the quoted text out of a message
     """
@@ -102,14 +101,14 @@ PAT_SPACE = re.compile(r'\_+$')
 
 POS_KEEPS = ['v', 'n', 'j']
 POS_LEMMA = ['v', 'n']
-UNIQ_WORDS = { ".": 0 }
+UNIQ_WORDS = {".": 0}
 
 
-def is_not_word (word):
+def is_not_word(word):
     return PAT_PUNCT.match(word) or PAT_SPACE.match(word)
 
 
-def get_word_id (root):
+def get_word_id(root):
     """
     lookup/assign a unique identify for each word root
     """
@@ -123,7 +122,7 @@ def get_word_id (root):
     return UNIQ_WORDS[root]
 
 
-def fix_microsoft (foo):
+def fix_microsoft(foo):
     """
     fix special case for `c#`, `f#`, etc.; thanks Microsoft
     """
@@ -148,7 +147,7 @@ def fix_microsoft (foo):
     return bar
 
 
-def fix_hypenation (foo):
+def fix_hypenation(foo):
     """
     fix hyphenation in the word list for a parsed sentence
     """
@@ -174,7 +173,7 @@ def fix_hypenation (foo):
     return bar
 
 
-def parse_graf (doc_id, graf_text, base_idx, spacy_nlp=None):
+def parse_graf(doc_id, graf_text, base_idx, spacy_nlp=None):
     """
     CORE ALGORITHM: parse and markup sentences in the given paragraph
     """
@@ -190,7 +189,7 @@ def parse_graf (doc_id, graf_text, base_idx, spacy_nlp=None):
 
     markup = []
     new_base_idx = base_idx
-    doc = spacy_nlp(graf_text, parse=True)
+    doc = spacy_nlp(graf_text)
 
     for span in doc.sents:
         graf = []
@@ -245,7 +244,7 @@ def parse_graf (doc_id, graf_text, base_idx, spacy_nlp=None):
     return markup, new_base_idx
 
 
-def parse_doc (json_iter):
+def parse_doc(json_iter):
     """
     parse one document to prep for TextRank
     """
@@ -268,7 +267,7 @@ def parse_doc (json_iter):
 ######################################################################
 ## graph analytics
 
-def get_tiles (graf, size=3):
+def get_tiles(graf, size=3):
     """
     generate word pairs for the TextRank graph
     """
@@ -285,7 +284,7 @@ def get_tiles (graf, size=3):
                 yield (w0.root, w1.root,)
 
 
-def build_graph (json_iter):
+def build_graph(json_iter):
     """
     construct the TextRank graph from parsed paragraphs
     """
@@ -305,14 +304,14 @@ def build_graph (json_iter):
                     graph.add_node(word_id)
 
             try:
-                graph.edge[pair[0]][pair[1]]["weight"] += 1.0
+                graph.edges[0, 1]["weight"] += 1.0
             except KeyError:
                 graph.add_edge(pair[0], pair[1], weight=1.0)
 
     return graph
 
 
-def write_dot (graph, ranks, path="graph.dot"):
+def write_dot(graph, ranks, path="graph.dot"):
     """
     output the graph in Dot file format
     """
@@ -328,7 +327,7 @@ def write_dot (graph, ranks, path="graph.dot"):
         f.write(dot.source)
 
 
-def render_ranks (graph, ranks, dot_file="graph.dot"):
+def render_ranks(graph, ranks, dot_file="graph.dot"):
     """
     render the TextRank graph for visual formats
     """
@@ -336,13 +335,13 @@ def render_ranks (graph, ranks, dot_file="graph.dot"):
         write_dot(graph, ranks, path=dot_file)
 
     ## omitted since matplotlib isn't reliable enough
-    #import matplotlib.pyplot as plt
-    #nx.draw_networkx(graph)
-    #plt.savefig(img_file)
-    #plt.show()
+    # import matplotlib.pyplot as plt
+    # nx.draw_networkx(graph)
+    # plt.savefig(img_file)
+    # plt.show()
 
 
-def text_rank (path):
+def text_rank(path):
     """
     run the TextRank algorithm
     """
@@ -359,7 +358,7 @@ SPACY_NLP = None
 STOPWORDS = None
 
 
-def load_stopwords (stop_file):
+def load_stopwords(stop_file):
     stopwords = set([])
 
     # provide a default if needed
@@ -377,7 +376,7 @@ def load_stopwords (stop_file):
 
         # check for the file in the same directory as this code module
         if not os.path.isfile(stop_path):
-            loc = os.path.realpath( os.path.join(cwd, os.path.dirname(__file__)) )
+            loc = os.path.realpath(os.path.join(cwd, os.path.dirname(__file__)))
             stop_path = os.path.join(loc, stop_file)
 
     try:
@@ -390,7 +389,7 @@ def load_stopwords (stop_file):
     return stopwords
 
 
-def find_chunk_sub (phrase, np, i):
+def find_chunk_sub(phrase, np, i):
     for j in iter(range(0, len(np))):
         p = phrase[i + j]
 
@@ -400,7 +399,7 @@ def find_chunk_sub (phrase, np, i):
     return phrase[i:i + len(np)]
 
 
-def find_chunk (phrase, np):
+def find_chunk(phrase, np):
     """
     leverage noun phrase chunking
     """
@@ -411,14 +410,14 @@ def find_chunk (phrase, np):
             return parsed_np
 
 
-def enumerate_chunks (phrase, spacy_nlp):
+def enumerate_chunks(phrase, spacy_nlp):
     """
     iterate through the noun phrases
     """
     if (len(phrase) > 1):
         found = False
         text = " ".join([rl.text for rl in phrase])
-        doc = spacy_nlp(text.strip(), parse=True)
+        doc = spacy_nlp(text.strip())
 
         for np in doc.noun_chunks:
             if np.text != text:
@@ -429,13 +428,13 @@ def enumerate_chunks (phrase, spacy_nlp):
             yield text, phrase
 
 
-def collect_keyword (sent, ranks, stopwords):
+def collect_keyword(sent, ranks, stopwords):
     """
     iterator for collecting the single-word keyphrases
     """
     for w in sent:
         if (w.word_id > 0) and (w.root in ranks) and (w.pos[0] in "NV") and (w.root not in stopwords):
-            rl = RankedLexeme(text=w.raw.lower(), rank=ranks[w.root]/2.0, ids=[w.word_id], pos=w.pos.lower(), count=1)
+            rl = RankedLexeme(text=w.raw.lower(), rank=ranks[w.root] / 2.0, ids=[w.word_id], pos=w.pos.lower(), count=1)
 
             if DEBUG:
                 print(rl)
@@ -443,7 +442,7 @@ def collect_keyword (sent, ranks, stopwords):
             yield rl
 
 
-def find_entity (sent, ranks, ent, i):
+def find_entity(sent, ranks, ent, i):
     if i >= len(sent):
         return None, None
     else:
@@ -467,7 +466,7 @@ def find_entity (sent, ranks, ent, i):
         return w_ranks, w_ids
 
 
-def collect_entities (sent, ranks, stopwords, spacy_nlp):
+def collect_entities(sent, ranks, stopwords, spacy_nlp):
     """
     iterator for collecting the named-entities
     """
@@ -493,7 +492,7 @@ def collect_entities (sent, ranks, stopwords, spacy_nlp):
                 yield rl
 
 
-def collect_phrases (sent, ranks, spacy_nlp):
+def collect_phrases(sent, ranks, spacy_nlp):
     """
     iterator for collecting the noun phrases
     """
@@ -527,16 +526,16 @@ def collect_phrases (sent, ranks, spacy_nlp):
         tail += 1
 
 
-def calc_rms (values):
+def calc_rms(values):
     """
     calculate a root-mean-squared metric for a list of float values
     """
-    #return math.sqrt(sum([x**2.0 for x in values])) / float(len(values))
+    # return math.sqrt(sum([x**2.0 for x in values])) / float(len(values))
     # take the max() which works fine
     return max(values)
 
 
-def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner=True):
+def normalize_key_phrases(path, ranks, stopwords=None, spacy_nlp=None, skip_ner=True):
     """
     collect keyphrases, named entities, etc., while removing stop words
     """
@@ -576,7 +575,7 @@ def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner
                 single_lex[id] = rl
             else:
                 prev_lex = single_lex[id]
-                single_lex[id] = rl._replace(count = prev_lex.count + 1)
+                single_lex[id] = rl._replace(count=prev_lex.count + 1)
 
         if not skip_ner:
             for rl in collect_entities(sent, ranks, stopwords, spacy_nlp):
@@ -586,7 +585,7 @@ def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner
                     phrase_lex[id] = rl
                 else:
                     prev_lex = phrase_lex[id]
-                    phrase_lex[id] = rl._replace(count = prev_lex.count + 1)
+                    phrase_lex[id] = rl._replace(count=prev_lex.count + 1)
 
         for rl in collect_phrases(sent, ranks, spacy_nlp):
             id = str(rl.ids)
@@ -595,7 +594,7 @@ def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner
                 phrase_lex[id] = rl
             else:
                 prev_lex = phrase_lex[id]
-                phrase_lex[id] = rl._replace(count = prev_lex.count + 1)
+                phrase_lex[id] = rl._replace(count=prev_lex.count + 1)
 
     # normalize ranks across single keywords and longer phrases:
     #    * boost the noun phrases based on their length
@@ -623,7 +622,7 @@ def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner
                 rank_list.append(rl.rank[i] / repeated_roots[id])
 
         phrase_rank = calc_rms(rank_list)
-        single_lex[str(rl.ids)] = rl._replace(rank = phrase_rank)
+        single_lex[str(rl.ids)] = rl._replace(rank=phrase_rank)
 
     # scale all the ranks together, so they sum to 1.0
     sum_ranks = sum([rl.rank for rl in single_lex.values()])
@@ -641,7 +640,7 @@ def normalize_key_phrases (path, ranks, stopwords=None, spacy_nlp=None, skip_ner
 ######################################################################
 ## sentence significance
 
-def mh_digest (data):
+def mh_digest(data):
     """
     create a MinHash digest
     """
@@ -654,7 +653,7 @@ def mh_digest (data):
     return m
 
 
-def rank_kernel (path):
+def rank_kernel(path):
     """
     return a list (matrix-ish) of the key phrases and their ranks
     """
@@ -675,7 +674,7 @@ def rank_kernel (path):
     return kernel
 
 
-def top_sentences (kernel, path):
+def top_sentences(kernel, path):
     """
     determine distance for each sentence
     """
@@ -702,7 +701,7 @@ def top_sentences (kernel, path):
 ######################################################################
 ## document summarization
 
-def limit_keyphrases (path, phrase_limit=20):
+def limit_keyphrases(path, phrase_limit=20):
     """
     iterator for the most significant key phrases
     """
@@ -720,7 +719,7 @@ def limit_keyphrases (path, phrase_limit=20):
     if len(lex) > 0:
         rank_thresh = statistics.mean([rl.rank for rl in lex])
     else:
-            rank_thresh = 0
+        rank_thresh = 0
 
     used = 0
 
@@ -733,7 +732,7 @@ def limit_keyphrases (path, phrase_limit=20):
             yield rl.text.replace(" - ", "-")
 
 
-def limit_sentences (path, word_limit=100):
+def limit_sentences(path, word_limit=100):
     """
     iterator for the most significant sentences, up to a specified limit
     """
@@ -758,7 +757,7 @@ def limit_sentences (path, word_limit=100):
             yield sent_text, p.idx
 
 
-def make_sentence (sent_text):
+def make_sentence(sent_text):
     """
     construct a sentence text, with proper spacing
     """
@@ -780,7 +779,7 @@ def make_sentence (sent_text):
 ######################################################################
 ## common utilities
 
-def json_iter (path):
+def json_iter(path):
     """
     iterator for JSON-per-line in a file pattern
     """
@@ -789,7 +788,7 @@ def json_iter (path):
             yield json.loads(line)
 
 
-def pretty_print (obj, indent=False):
+def pretty_print(obj, indent=False):
     """
     pretty print a JSON object
     """
